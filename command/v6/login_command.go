@@ -1,9 +1,11 @@
 package v6
 
 import (
+	"errors"
 	"net/url"
 
 	"code.cloudfoundry.org/cli/actor/v2action"
+	"code.cloudfoundry.org/cli/cf/configuration/coreconfig"
 	"code.cloudfoundry.org/cli/command"
 	"code.cloudfoundry.org/cli/command/translatableerror"
 	"code.cloudfoundry.org/cli/command/v6/shared"
@@ -43,37 +45,116 @@ func (cmd *LoginCommand) Setup(config command.Config, ui command.UI) error {
 	return nil
 }
 
-func (cmd *LoginCommand) Execute(args []string) error {
-	if cmd.Config.Experimental() {
-		if cmd.APIEndpoint == "" {
-			apiEndpoint, err := cmd.UI.DisplayTextPrompt("API endpoint")
-			if err != nil {
-				return err
-			}
-			cmd.APIEndpoint = apiEndpoint
-		} else {
-			cmd.UI.DisplayText("API endpoint: {{.APIEndpoint}}", map[string]interface{}{
-				"APIEndpoint": cmd.APIEndpoint,
-			})
-		}
-		endpoint, _ := url.Parse(cmd.APIEndpoint)
-		if endpoint.Scheme == "" {
-			endpoint.Scheme = "https"
-		}
-		settings := v2action.TargetSettings{
-			URL:               endpoint.String(),
-			SkipSSLValidation: true,
-		}
-		_, err := cmd.Actor.SetTarget(settings)
+func (cmd *LoginCommand) doStuff(args []string) error {
+	if cmd.APIEndpoint == "" {
+		apiEndpoint, err := cmd.UI.DisplayTextPrompt("API endpoint")
 		if err != nil {
 			return err
 		}
-
-		cmd.UI.DisplayText("API endpoint: {{.APIEndpoint}} (API Version: {{.APIVersion}})", map[string]interface{}{
+		cmd.APIEndpoint = apiEndpoint
+	} else {
+		cmd.UI.DisplayText("API endpoint: {{.APIEndpoint}}", map[string]interface{}{
 			"APIEndpoint": cmd.APIEndpoint,
-			"APIVersion":  cmd.Config.APIVersion(),
 		})
-		return nil
+	}
+	endpoint, _ := url.Parse(cmd.APIEndpoint)
+	if endpoint.Scheme == "" {
+		endpoint.Scheme = "https"
+	}
+	settings := v2action.TargetSettings{
+		URL:               endpoint.String(),
+		SkipSSLValidation: true,
+	}
+	_, err := cmd.Actor.SetTarget(settings)
+	if err != nil {
+		return err
+	}
+
+	cmd.authenticate("", "")
+
+	cmd.UI.DisplayText("API endpoint: {{.APIEndpoint}} (API Version: {{.APIVersion}})", map[string]interface{}{
+		"APIEndpoint": cmd.APIEndpoint,
+		"APIVersion":  cmd.Config.APIVersion(),
+	})
+	return nil
+}
+
+func (cmd *LoginCommand) Execute(args []string) error {
+	if cmd.Config.Experimental() {
+		return cmd.doStuff(args)
 	}
 	return translatableerror.UnrefactoredCommandError{}
+}
+
+func (cmd *LoginCommand) authenticate(usernameFlagValue, passwordFlagValue string) error {
+	if cmd.config.UAAGrantType() == "client_credentials" {
+		return errors.New(T("Service account currently logged in. Use 'cf logout' to log out service account and try again."))
+	}
+
+	prompts, err := cmd.authenticator.GetLoginPromptsAndSaveUAAServerURL()
+	if err != nil {
+		return err
+	}
+	passwordKeys := []string{}
+	credentials := make(map[string]string)
+
+	if value, ok := prompts["username"]; ok {
+		if prompts["username"].Type == coreconfig.AuthPromptTypeText && usernameFlagValue != "" {
+			credentials["username"] = usernameFlagValue
+		} else {
+			credentials["username"] = cmd.ui.Ask(value.DisplayName)
+		}
+	}
+
+	for key, prompt := range prompts {
+		if prompt.Type == coreconfig.AuthPromptTypePassword {
+			if key == "passcode" || key == "password" {
+				continue
+			}
+
+			passwordKeys = append(passwordKeys, key)
+		} else if key == "username" {
+			continue
+		} else {
+			credentials[key] = cmd.ui.Ask(prompt.DisplayName)
+		}
+	}
+
+	for i := 0; i < maxLoginTries; i++ {
+
+		// ensure that password gets prompted before other codes (eg. mfa code)
+		if passPrompt, ok := prompts["password"]; ok {
+			if passwordFlagValue != "" {
+				credentials["password"] = passwordFlagValue
+				passwordFlagValue = ""
+			} else {
+				credentials["password"] = cmd.ui.AskForPassword(passPrompt.DisplayName)
+			}
+		}
+
+		for _, key := range passwordKeys {
+			credentials[key] = cmd.ui.AskForPassword(prompts[key].DisplayName)
+		}
+
+		credentialsCopy := make(map[string]string, len(credentials))
+		for k, v := range credentials {
+			credentialsCopy[k] = v
+		}
+
+		cmd.ui.Say(T("Authenticating..."))
+		err = cmd.authenticator.Authenticate(credentialsCopy)
+
+		if err == nil {
+			cmd.ui.Ok()
+			cmd.ui.Say("")
+			break
+		}
+
+		cmd.ui.Say(err.Error())
+	}
+
+	if err != nil {
+		return errors.New(T("Unable to authenticate."))
+	}
+	return nil
 }

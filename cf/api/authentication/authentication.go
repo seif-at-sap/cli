@@ -171,7 +171,14 @@ func (uaa UAARepository) GetLoginPromptsAndSaveUAAServerURL() (prompts map[strin
 	resource := &LoginResource{}
 	apiErr = uaa.gateway.GetResource(url, resource)
 
-	prompts = resource.parsePrompts()
+	prompts = make(map[string]coreconfig.AuthPrompt)
+	for key, val := range resource.Prompts {
+		prompts[key] = coreconfig.AuthPrompt{
+			Type:        knownAuthPromptTypes[val[0]],
+			DisplayName: val[1],
+		}
+	}
+
 	if resource.Links["uaa"] == "" {
 		uaa.config.SetUaaEndpoint(uaa.config.AuthenticationEndpoint())
 	} else {

@@ -13,4 +13,5 @@ type UAAClient interface {
 	CreateUser(username string, password string, origin string) (uaa.User, error)
 	GetSSHPasscode(accessToken string, sshOAuthClient string) (string, error)
 	RefreshAccessToken(refreshToken string) (uaa.RefreshedTokens, error)
+	GetLogin() (uaa.Login, error)
 }

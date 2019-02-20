@@ -5,6 +5,7 @@ import (
 
 	"code.cloudfoundry.org/cli/actor/actionerror"
 	"code.cloudfoundry.org/cli/api/uaa/constant"
+	"code.cloudfoundry.org/cli/cf/configuration/coreconfig"
 )
 
 // Authenticate authenticates the user in UAA and sets the returned tokens in
@@ -34,4 +35,23 @@ func (actor Actor) Authenticate(ID string, secret string, origin string, grantTy
 	}
 
 	return nil
+}
+
+func (actor Actor) GetLoginPromptsAndSaveUAAServerURL() (prompts map[string]coreconfig.AuthPrompt, apiErr error) {
+	loginThing := actor.UAAClient.GetLogin()
+
+	prompts = make(map[string]coreconfig.AuthPrompt)
+	for key, val := range resource.Prompts {
+		prompts[key] = coreconfig.AuthPrompt{
+			Type:        knownAuthPromptTypes[val[0]],
+			DisplayName: val[1],
+		}
+	}
+
+	if resource.Links["uaa"] == "" {
+		uaa.config.SetUaaEndpoint(uaa.config.AuthenticationEndpoint())
+	} else {
+		uaa.config.SetUaaEndpoint(resource.Links["uaa"])
+	}
+	return
 }
