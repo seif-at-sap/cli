@@ -5,6 +5,7 @@ import (
 	"net/url"
 
 	"code.cloudfoundry.org/cli/actor/v2action"
+	"code.cloudfoundry.org/cli/api/uaa/constant"
 	"code.cloudfoundry.org/cli/cf/configuration/coreconfig"
 	"code.cloudfoundry.org/cli/command"
 	"code.cloudfoundry.org/cli/command/translatableerror"
@@ -14,7 +15,9 @@ import (
 //go:generate counterfeiter . LoginActor
 
 type LoginActor interface {
+	BetterAuthenticate(creds map[string]string, origin string, grantType constant.GrantType) error
 	SetTarget(settings v2action.TargetSettings) (v2action.Warnings, error)
+	GetLoginPrompts() map[string]coreconfig.AuthPrompt
 }
 
 type LoginCommand struct {
@@ -35,11 +38,11 @@ type LoginCommand struct {
 }
 
 func (cmd *LoginCommand) Setup(config command.Config, ui command.UI) error {
-	ccClient, uaaClient, err := shared.NewClients(config, ui, false)
+	ccClient, _, err := shared.NewClients(config, ui, false)
 	if err != nil {
 		return err
 	}
-	cmd.Actor = v2action.NewActor(ccClient, uaaClient, config)
+	cmd.Actor = v2action.NewActor(ccClient, nil, config)
 	cmd.UI = ui
 	cmd.Config = config
 	return nil
@@ -70,6 +73,13 @@ func (cmd *LoginCommand) doStuff(args []string) error {
 		return err
 	}
 
+	// Recreating the actor because we now have an auth endpoint we can use
+	ccClient, uaaClient, err := shared.NewClients(cmd.Config, cmd.UI, true)
+	if err != nil {
+		return err
+	}
+	cmd.Actor = v2action.NewActor(ccClient, uaaClient, cmd.Config)
+
 	cmd.authenticate("", "")
 
 	cmd.UI.DisplayText("API endpoint: {{.APIEndpoint}} (API Version: {{.APIVersion}})", map[string]interface{}{
@@ -87,22 +97,19 @@ func (cmd *LoginCommand) Execute(args []string) error {
 }
 
 func (cmd *LoginCommand) authenticate(usernameFlagValue, passwordFlagValue string) error {
-	if cmd.config.UAAGrantType() == "client_credentials" {
-		return errors.New(T("Service account currently logged in. Use 'cf logout' to log out service account and try again."))
-	}
-
-	prompts, err := cmd.authenticator.GetLoginPromptsAndSaveUAAServerURL()
-	if err != nil {
-		return err
-	}
+	prompts := cmd.Actor.GetLoginPrompts()
 	passwordKeys := []string{}
 	credentials := make(map[string]string)
+	var err error
 
 	if value, ok := prompts["username"]; ok {
 		if prompts["username"].Type == coreconfig.AuthPromptTypeText && usernameFlagValue != "" {
 			credentials["username"] = usernameFlagValue
 		} else {
-			credentials["username"] = cmd.ui.Ask(value.DisplayName)
+			credentials["username"], err = cmd.UI.DisplayTextPrompt(value.DisplayName)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -116,10 +123,14 @@ func (cmd *LoginCommand) authenticate(usernameFlagValue, passwordFlagValue strin
 		} else if key == "username" {
 			continue
 		} else {
-			credentials[key] = cmd.ui.Ask(prompt.DisplayName)
+			credentials[key], err = cmd.UI.DisplayTextPrompt(prompt.DisplayName)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
+	maxLoginTries := 3
 	for i := 0; i < maxLoginTries; i++ {
 
 		// ensure that password gets prompted before other codes (eg. mfa code)
@@ -128,12 +139,18 @@ func (cmd *LoginCommand) authenticate(usernameFlagValue, passwordFlagValue strin
 				credentials["password"] = passwordFlagValue
 				passwordFlagValue = ""
 			} else {
-				credentials["password"] = cmd.ui.AskForPassword(passPrompt.DisplayName)
+				credentials["password"], err = cmd.UI.DisplayPasswordPrompt(passPrompt.DisplayName)
+				if err != nil {
+					return err
+				}
 			}
 		}
 
 		for _, key := range passwordKeys {
-			credentials[key] = cmd.ui.AskForPassword(prompts[key].DisplayName)
+			credentials[key], err = cmd.UI.DisplayPasswordPrompt(prompts[key].DisplayName)
+			if err != nil {
+				return err
+			}
 		}
 
 		credentialsCopy := make(map[string]string, len(credentials))
@@ -141,20 +158,22 @@ func (cmd *LoginCommand) authenticate(usernameFlagValue, passwordFlagValue strin
 			credentialsCopy[k] = v
 		}
 
-		cmd.ui.Say(T("Authenticating..."))
-		err = cmd.authenticator.Authenticate(credentialsCopy)
+		cmd.UI.DisplayText("Authenticating...")
+		err = cmd.Actor.BetterAuthenticate(credentials, "", constant.GrantTypePassword)
 
 		if err == nil {
-			cmd.ui.Ok()
-			cmd.ui.Say("")
+			cmd.UI.DisplayOK()
+			cmd.UI.DisplayNewline()
 			break
 		}
 
-		cmd.ui.Say(err.Error())
+		cmd.UI.DisplayError(err)
 	}
 
 	if err != nil {
-		return errors.New(T("Unable to authenticate."))
+		// In non-spike, use translatableerror
+		return errors.New(("Unable to authenticate."))
 	}
+
 	return nil
 }

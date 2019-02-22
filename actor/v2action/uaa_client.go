@@ -10,8 +10,9 @@ import (
 type UAAClient interface {
 	APIVersion() string
 	Authenticate(ID string, secret string, origin string, grantType constant.GrantType) (string, string, error)
+	BetterAuthenticate(creds map[string]string, origin string, grantType constant.GrantType) (string, string, error)
 	CreateUser(username string, password string, origin string) (uaa.User, error)
 	GetSSHPasscode(accessToken string, sshOAuthClient string) (string, error)
 	RefreshAccessToken(refreshToken string) (uaa.RefreshedTokens, error)
-	GetLogin() (uaa.Login, error)
+	GetInfo() uaa.Info
 }

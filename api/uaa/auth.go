@@ -64,3 +64,45 @@ func (client Client) Authenticate(ID string, secret string, origin string, grant
 	err = client.connection.Make(request, &response)
 	return responseBody.AccessToken, responseBody.RefreshToken, err
 }
+
+func (client Client) BetterAuthenticate(credentials map[string]string, origin string, grantType constant.GrantType) (string, string, error) {
+	requestBody := url.Values{
+		"grant_type": {string(grantType)},
+	}
+
+	for k, v := range credentials {
+		requestBody.Set(k, v)
+	}
+
+	var query url.Values
+	if origin != "" {
+		query = url.Values{
+			"login_hint": {fmt.Sprintf(`{"origin":"%s"}`, origin)},
+		}
+	}
+
+	request, err := client.newRequest(requestOptions{
+		RequestName: internal.PostOAuthTokenRequest,
+		Header: http.Header{
+			"Content-Type": {"application/x-www-form-urlencoded"},
+		},
+		Body:  strings.NewReader(requestBody.Encode()),
+		Query: query,
+	})
+
+	if err != nil {
+		return "", "", err
+	}
+
+	if grantType == constant.GrantTypePassword {
+		request.SetBasicAuth(client.config.UAAOAuthClient(), client.config.UAAOAuthClientSecret())
+	}
+
+	responseBody := AuthResponse{}
+	response := Response{
+		Result: &responseBody,
+	}
+
+	err = client.connection.Make(request, &response)
+	return responseBody.AccessToken, responseBody.RefreshToken, err
+}

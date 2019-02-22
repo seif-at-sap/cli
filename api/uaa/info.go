@@ -9,6 +9,7 @@ type Info struct {
 		UAA   string `json:"uaa"`
 		Login string `json:"login"`
 	} `json:"links"`
+	Prompts map[string][]string
 }
 
 // APIVersion is the version of the server.

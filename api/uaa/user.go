@@ -8,10 +8,6 @@ import (
 	"code.cloudfoundry.org/cli/api/uaa/internal"
 )
 
-type Login struct {
-	TODO string
-}
-
 // User represents an UAA user account.
 type User struct {
 	ID string

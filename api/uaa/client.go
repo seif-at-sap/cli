@@ -43,3 +43,7 @@ func NewClient(config Config) *Client {
 
 	return &client
 }
+
+func (c *Client) GetInfo() Info {
+	return c.Info
+}
