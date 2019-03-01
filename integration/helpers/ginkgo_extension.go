@@ -11,7 +11,7 @@ import (
 	"github.com/onsi/gomega/ghttp"
 )
 
-func VerifyRequestFromDumpSttring(input string) http.HandlerFunc {
+func VerifyRequestFromDumpString(input string) http.HandlerFunc {
 	buf := bufio.NewReader(strings.NewReader(input))
 	req, err := http.ReadRequest(buf)
 	Expect(err).ToNot(HaveOccurred())
