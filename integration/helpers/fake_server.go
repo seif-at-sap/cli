@@ -96,3 +96,18 @@ func startServerWithVersions(v2Version string, v3Version string, minimumCLIVersi
 
 	return server
 }
+
+func AddLoginRoutes(s *Server) {
+	s.RouteToHandler("POST", "/oauth/token", RespondWith(http.StatusOK,
+		`{
+			"access_token": "some-token-value",
+			"expires_in": 599,
+			"id_token": "some-other-token",
+			"jti": "some-other-string",
+			"refresh_token": "some-refresh-token",
+			"scope": "openid routing.router_groups.write scim.read cloud_controller.admin uaa.user routing.router_groups.read cloud_controller.read password.write cloud_controller.write network.admin doppler.firehose scim.write",
+			"token_type": "some-type"
+		 }
+		 `,
+	))
+}
