@@ -446,7 +446,7 @@ var _ = Describe("login command", func() {
 					BeforeEach(func() {
 						server = helpers.StartAndTargetServerWithAPIVersions(helpers.DefaultV2Version, helpers.DefaultV3Version)
 						helpers.AddLoginRoutes(server)
-						helpers.OrgsHaveNoSpaces(server)
+						// helpers.OrgsHaveNoSpaces(server)
 						helpers.AddFiftyOneOrgs(server)
 					})
 
