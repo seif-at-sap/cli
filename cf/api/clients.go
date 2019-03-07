@@ -30,9 +30,9 @@ func NewCloudControllerClientRepository(config coreconfig.Reader, uaaGateway net
 func (repo CloudControllerClientRepository) ClientExists(clientID string) (exists bool, apiErr error) {
 	exists = false
 	uaaEndpoint, apiErr := repo.getAuthEndpoint()
-	// if apiErr != nil {
-	// 	return exists, apiErr
-	// }
+	if apiErr != nil {
+		return exists, apiErr
+	}
 
 	path := fmt.Sprintf("%s/oauth/clients/%s", uaaEndpoint, clientID)
 

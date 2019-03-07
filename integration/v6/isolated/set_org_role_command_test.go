@@ -79,12 +79,13 @@ var _ = Describe("set-org-role command", func() {
 			username, _ = helpers.CreateUser()
 		})
 
-		FWhen("the --client flag is passed", func() {
-			When("the targeted user is actually a client", func() {
+		When("the --client flag is passed", func() {
+			FWhen("the targeted user is actually a client", func() {
 				var clientID string
 
 				BeforeEach(func() {
-					clientID, _ = helpers.SkipIfClientCredentialsNotSet()
+					// clientID, _ = helpers.SkipIfClientCredentialsNotSet()
+					clientID = "potato-face"
 				})
 
 				It("sets the org role for the client", func() {
@@ -95,7 +96,7 @@ var _ = Describe("set-org-role command", func() {
 				})
 			})
 
-			When("the targeted client does not exist", func() {
+			FWhen("the targeted client does not exist", func() {
 				var clientID string
 
 				BeforeEach(func() {

@@ -18,7 +18,7 @@ import (
 )
 
 var _ = Describe("ClientRepository", func() {
-	FDescribe("ClientExists", func() {
+	Describe("ClientExists", func() {
 		var (
 			client     api.ClientRepository
 			uaaServer  *ghttp.Server
@@ -82,15 +82,17 @@ var _ = Describe("ClientRepository", func() {
 		})
 
 		Context("when getAuthEndpoint fails", func() {
-			var err error
+			var executeErr error
 
 			BeforeEach(func() {
-				err = errors.New("auth-endpoint-error")
-				client.getAuthEndpointReturns("bad-endpoint-path", err)
+				executeErr = errors.New("UAA endpoint missing from config file")
+				config.SetUaaEndpoint("")
 			})
 
 			It("returns that error", func() {
 				b, err := client.ClientExists("some-client")
+				Expect(b).To(BeFalse())
+				Expect(err).To(MatchError(executeErr))
 			})
 		})
 	})
