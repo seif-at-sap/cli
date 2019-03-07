@@ -79,19 +79,39 @@ var _ = Describe("set-org-role command", func() {
 			username, _ = helpers.CreateUser()
 		})
 
-		When("the target user is a client-credentials user", func() {
-			var clientID string
+		FWhen("the --client flag is passed", func() {
+			When("the targeted user is actually a client", func() {
+				var clientID string
 
-			BeforeEach(func() {
-				clientID, _ = helpers.SkipIfClientCredentialsNotSet()
+				BeforeEach(func() {
+					clientID, _ = helpers.SkipIfClientCredentialsNotSet()
+				})
+
+				It("sets the org role for the client", func() {
+					session := helpers.CF("set-org-role", clientID, orgName, "OrgManager", "--client")
+					Eventually(session).Should(Say("Assigning role OrgManager to user %s in org %s as admin...", clientID, orgName))
+					Eventually(session).Should(Say("OK"))
+					Eventually(session).Should(Exit(0))
+				})
 			})
 
-			It("sets the org role for the client", func() {
-				session := helpers.CF("set-org-role", clientID, orgName, "OrgManager", "--client")
-				Eventually(session).Should(Say("Assigning role OrgManager to user %s in org %s as admin...", clientID, orgName))
-				Eventually(session).Should(Say("OK"))
-				Eventually(session).Should(Exit(0))
+			When("the targeted client does not exist", func() {
+				var clientID string
+
+				BeforeEach(func() {
+					clientID = "nonexistent-client"
+				})
+
+				It("Fails with an appropriate error message", func() {
+					session := helpers.CF("set-org-role", clientID, orgName, "OrgManager", "--client")
+					// Eventually(session).Should(Say("Assigning role OrgManager to user %s in org %s as admin...", clientID, orgName))
+					// Eventually(session).Should(Say("OK"))
+					Eventually(session).Should(Exit(1))
+
+				})
+
 			})
+
 		})
 
 		When("the org and user both exist", func() {
