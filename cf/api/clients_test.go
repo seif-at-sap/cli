@@ -1,12 +1,12 @@
 package api_test
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 
 	"code.cloudfoundry.org/cli/cf/api"
 	"code.cloudfoundry.org/cli/cf/configuration/coreconfig"
+	"code.cloudfoundry.org/cli/cf/errors"
 	"code.cloudfoundry.org/cli/cf/net"
 	"code.cloudfoundry.org/cli/cf/terminal/terminalfakes"
 	"code.cloudfoundry.org/cli/cf/trace/tracefakes"
@@ -50,10 +50,34 @@ var _ = Describe("ClientRepository", func() {
 				)
 			})
 
-			It("returns an error", func() {
-
+			It("returns a ModelNotFound error", func() {
 				b, err := client.ClientExists("some-client")
-				Expect(err).To(Not(BeNil()))
+				Expect(err).To(MatchError(&errors.ModelNotFoundError{
+					ModelType: "Client",
+					ModelName: "some-client",
+				}))
+				Expect(b).To(BeFalse())
+			})
+		})
+
+		Context("when the active user has insufficient permissions", func() {
+			var clientID string
+			BeforeEach(func() {
+				clientID = "some-client"
+
+				requestPath := fmt.Sprintf("/oauth/clients/%s", clientID)
+
+				uaaServer.AppendHandlers(
+					ghttp.CombineHandlers(
+						ghttp.VerifyRequest("GET", requestPath),
+						ghttp.RespondWith(http.StatusForbidden, ""),
+					),
+				)
+			})
+
+			It("returns an AccessDenied error", func() {
+				b, err := client.ClientExists(clientID)
+				Expect(err).To(MatchError(&errors.AccessDeniedError{}))
 				Expect(b).To(BeFalse())
 			})
 		})
@@ -72,6 +96,7 @@ var _ = Describe("ClientRepository", func() {
 					),
 				)
 			})
+
 			It("returns true and no error", func() {
 				b, err := client.ClientExists("some-client")
 

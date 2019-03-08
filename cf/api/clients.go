@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 
 	"code.cloudfoundry.org/cli/cf/api/resources"
 	"code.cloudfoundry.org/cli/cf/configuration/coreconfig"
@@ -39,14 +40,15 @@ func (repo CloudControllerClientRepository) ClientExists(clientID string) (exist
 	uaaResponse := new(resources.UAAUserResources)
 	apiErr = repo.uaaGateway.GetResource(path, uaaResponse)
 	if apiErr != nil {
-		// if errType, ok := apiErr.(errors.HTTPError); ok {
-		// 	if errType.StatusCode() == 404 {
-		// 		return false, apiErr
-		// 	}
-		// }
-		// println("TEST: ", apiErr.Error())
+		if errType, ok := apiErr.(errors.HTTPError); ok {
+			switch errType.StatusCode() {
+			case http.StatusNotFound:
+				return false, errors.NewModelNotFoundError("Client", clientID)
+			case http.StatusForbidden:
+				return false, errors.NewAccessDeniedError()
+			}
+		}
 		return false, apiErr
-		// return false, errors.NewModelNotFoundError("Client", clientID)
 	}
 	return true, nil
 }

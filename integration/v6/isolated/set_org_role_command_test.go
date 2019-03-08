@@ -80,12 +80,11 @@ var _ = Describe("set-org-role command", func() {
 		})
 
 		When("the --client flag is passed", func() {
-			FWhen("the targeted user is actually a client", func() {
+			When("the targeted user is actually a client", func() {
 				var clientID string
 
 				BeforeEach(func() {
-					// clientID, _ = helpers.SkipIfClientCredentialsNotSet()
-					clientID = "potato-face"
+					clientID, _ = helpers.SkipIfClientCredentialsNotSet()
 				})
 
 				It("sets the org role for the client", func() {
@@ -94,25 +93,35 @@ var _ = Describe("set-org-role command", func() {
 					Eventually(session).Should(Say("OK"))
 					Eventually(session).Should(Exit(0))
 				})
+
+				When("the active user lacks permissions to look up clients", func() {
+					BeforeEach(func() {
+						helpers.SwitchToOrgRole(orgName, "OrgManager")
+					})
+
+					It("prints an appropriate error and exits 1", func() {
+						session := helpers.CF("set-org-role", "notaclient", orgName, "OrgManager", "--client")
+						Eventually(session).Should(Say("FAILED"))
+						Eventually(session).Should(Say("Server error, status code: 403: Access is denied.  You do not have privileges to execute this command."))
+						Eventually(session).Should(Exit(1))
+					})
+				})
 			})
 
-			FWhen("the targeted client does not exist", func() {
-				var clientID string
+			When("the targeted client does not exist", func() {
+				var badClientID string
 
 				BeforeEach(func() {
-					clientID = "nonexistent-client"
+					badClientID = "nonexistent-client"
 				})
 
-				It("Fails with an appropriate error message", func() {
-					session := helpers.CF("set-org-role", clientID, orgName, "OrgManager", "--client")
-					// Eventually(session).Should(Say("Assigning role OrgManager to user %s in org %s as admin...", clientID, orgName))
-					// Eventually(session).Should(Say("OK"))
+				It("fails with an appropriate error message", func() {
+					session := helpers.CF("set-org-role", badClientID, orgName, "OrgManager", "--client")
+					Eventually(session).Should(Say("FAILED"))
+					Eventually(session).Should(Say("Client nonexistent-client not found"))
 					Eventually(session).Should(Exit(1))
-
 				})
-
 			})
-
 		})
 
 		When("the org and user both exist", func() {

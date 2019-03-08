@@ -23,7 +23,7 @@ var _ = Describe("UserRequirement", func() {
 	})
 
 	Describe("Execute", func() {
-		Context("wzahen wantGUID is true", func() {
+		Context("when wantGUID is true", func() {
 			BeforeEach(func() {
 				userRequirement = requirements.NewUserRequirement("the-username", userRepo, true)
 			})
@@ -115,7 +115,7 @@ var _ = Describe("UserRequirement", func() {
 					clientRepo.ClientExistsReturns(false, err)
 				})
 
-				FIt("Returns an error", func() {
+				It("returns an error", func() {
 					clientReq = requirements.NewClientRequirement("the-client-id", clientRepo)
 					output := clientReq.Execute()
 
