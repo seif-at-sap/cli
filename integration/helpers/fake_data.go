@@ -1308,7 +1308,9 @@ var noSpaces string = `{
   }`
 
 func AddFiftyOneOrgs(server *ghttp.Server) {
-	server.RouteToHandler(http.MethodGet, "/v2/organizations?order-by=name", ghttp.RespondWith(http.StatusOK, fiftyOneOrgJSONPage1))
-	server.RouteToHandler(http.MethodGet, "/v2/organizations?order-by=name&order-direction=asc&page=2&results-per-page=50", ghttp.RespondWith(http.StatusOK, fiftyOneOrgJSONPage2))
-	server.RouteToHandler(http.MethodGet, "/v2/spaces?order-by=name&q=organization_guid%3A39c33a35-6155-4146-9e82-31d1edc9c546", ghttp.RespondWith(http.StatusOK, noSpaces))
+	AddHandler(server, http.MethodGet, "/v2/organizations?order-by=name", http.StatusOK, []byte(fiftyOneOrgJSONPage1))
+	AddHandler(server, http.MethodGet, "/v2/organizations?order-by=name&order-direction=asc&page=2&results-per-page=50", http.StatusOK, []byte(fiftyOneOrgJSONPage2))
+	AddHandler(server, http.MethodGet, "/v2/spaces?order-by=name&q=organization_guid%3A6f30e06d-360e-4cd7-9849-01f28109bc37", http.StatusOK, []byte(noSpaces))
 }
+
+// /v2/organizations/6f30e06d-360e-4cd7-9849-01f28109bc37/spaces
