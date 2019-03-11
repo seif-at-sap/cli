@@ -447,7 +447,7 @@ var _ = Describe("login command", func() {
 						server = helpers.StartAndTargetServerWithAPIVersions(helpers.DefaultV2Version, helpers.DefaultV3Version)
 						helpers.AddLoginRoutes(server)
 						// helpers.OrgsHaveNoSpaces(server)
-						helpers.AddFiftyOneOrgs(server)
+						helpers.AddFiftyOneOrgs(server, orgName)
 					})
 
 					It("displays a message and prompt the user for the org name", func() {

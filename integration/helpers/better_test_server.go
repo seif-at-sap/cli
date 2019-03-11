@@ -35,7 +35,7 @@ func AddHandler(ser *ghttp.Server, method string, pathAndQuery string, status in
 				for k, v := range responses {
 					fmt.Printf("For %s have status %d with %d bytes\n", k, v.status, len(v.body))
 				}
-				panic("no response for" + key(r.Method, r.URL))
+				panic("no response for " + key(r.Method, r.URL))
 			}
 			println(res.status)
 			println("**************************************")

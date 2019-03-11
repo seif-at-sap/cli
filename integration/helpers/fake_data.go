@@ -1,7 +1,9 @@
 package helpers
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/onsi/gomega/ghttp"
 )
@@ -619,7 +621,7 @@ var fiftyOneOrgJSONPage1 string = `{
 		  "default_isolation_segment_guid": null,
 		  "domains_url": "/v2/organizations/db6ac1a4-6740-4826-874e-4fc4b479007f/domains",
 		  "managers_url": "/v2/organizations/db6ac1a4-6740-4826-874e-4fc4b479007f/managers",
-		  "name": "org31",
+		  "name": "%[1]s",
 		  "private_domains_url": "/v2/organizations/db6ac1a4-6740-4826-874e-4fc4b479007f/private_domains",
 		  "quota_definition_guid": "8b5e6b08-123e-41e3-92b9-0d9b01b98ff3",
 		  "quota_definition_url": "/v2/quota_definitions/8b5e6b08-123e-41e3-92b9-0d9b01b98ff3",
@@ -1265,7 +1267,7 @@ var fiftyOneOrgJSONPage1 string = `{
 	"total_results": 51
   }`
 
-var fiftyOneOrgJSONPage2 string = `{
+var fiftyOneOrgJSONPage2 = `{
 	"next_url": null,
 	"prev_url": "/v2/organizations?order-by=name&order-direction=asc&page=1&results-per-page=50",
 	"resources": [
@@ -1305,12 +1307,114 @@ var noSpaces string = `{
 	"resources": null,
 	"total_pages": 1,
 	"total_results": 0
-  }`
+	}`
 
-func AddFiftyOneOrgs(server *ghttp.Server) {
-	AddHandler(server, http.MethodGet, "/v2/organizations?order-by=name", http.StatusOK, []byte(fiftyOneOrgJSONPage1))
+var emptyOrgWithDepthOne = `{
+   "total_results": 1,
+   "total_pages": 1,
+   "prev_url": null,
+   "next_url": null,
+   "resources": [
+      {
+         "metadata": {
+            "guid": "a470ca19-17de-4890-be2b-6b731a03161c",
+            "url": "/v2/organizations/a470ca19-17de-4890-be2b-6b731a03161c",
+            "created_at": "2019-03-11T15:10:33Z",
+            "updated_at": "2019-03-11T15:10:33Z"
+         },
+         "entity": {
+            "name": "o",
+            "billing_enabled": false,
+            "quota_definition_guid": "a5e9018f-6622-49da-8252-b91fb01e295d",
+            "status": "active",
+            "default_isolation_segment_guid": null,
+            "quota_definition_url": "/v2/quota_definitions/a5e9018f-6622-49da-8252-b91fb01e295d",
+            "quota_definition": {
+               "metadata": {
+                  "guid": "a5e9018f-6622-49da-8252-b91fb01e295d",
+                  "url": "/v2/quota_definitions/a5e9018f-6622-49da-8252-b91fb01e295d",
+                  "created_at": "2019-03-08T18:27:20Z",
+                  "updated_at": "2019-03-08T18:27:20Z"
+               },
+               "entity": {
+                  "name": "default",
+                  "non_basic_services_allowed": true,
+                  "total_services": -1,
+                  "total_routes": 1000,
+                  "total_private_domains": -1,
+                  "memory_limit": 102400,
+                  "trial_db_allowed": false,
+                  "instance_memory_limit": -1,
+                  "app_instance_limit": -1,
+                  "app_task_limit": -1,
+                  "total_service_keys": -1,
+                  "total_reserved_route_ports": 100
+               }
+            },
+            "spaces_url": "/v2/organizations/a470ca19-17de-4890-be2b-6b731a03161c/spaces",
+            "spaces": [],
+            "domains_url": "/v2/organizations/a470ca19-17de-4890-be2b-6b731a03161c/domains",
+            "domains": [
+               {
+                  "metadata": {
+                     "guid": "21d4c610-b547-4d35-807a-453be6705c20",
+                     "url": "/v2/shared_domains/21d4c610-b547-4d35-807a-453be6705c20",
+                     "created_at": "2019-03-08T18:27:20Z",
+                     "updated_at": "2019-03-08T18:27:20Z"E
+                  },
+                  "entity": {
+                     "name": "hot-flasher.lite.cli.fun",
+                     "internal": false,
+                     "router_group_guid": null,
+                     "router_group_type": null
+                  }
+               }
+            ],
+            "private_domains_url": "/v2/organizations/a470ca19-17de-4890-be2b-6b731a03161c/private_domains",
+            "private_domains": [],
+            "users_url": "/v2/organizations/a470ca19-17de-4890-be2b-6b731a03161c/users",
+            "users": [],
+            "managers_url": "/v2/organizations/a470ca19-17de-4890-be2b-6b731a03161c/managers",
+            "managers": [
+               {
+                  "metadata": {
+                     "guid": "ef71c437-82fd-4a35-b9a7-910b2aaf6f18",
+                     "url": "/v2/users/ef71c437-82fd-4a35-b9a7-910b2aaf6f18",
+                     "created_at": "2019-03-11T14:59:51Z",
+                     "updated_at": "2019-03-11T14:59:51Z"
+                  },
+                  "entity": {
+                     "admin": false,
+                     "active": true,
+                     "default_space_guid": null,
+                     "spaces_url": "/v2/users/ef71c437-82fd-4a35-b9a7-910b2aaf6f18/spaces",
+                     "organizations_url": "/v2/users/ef71c437-82fd-4a35-b9a7-910b2aaf6f18/organizations",
+                     "managed_organizations_url": "/v2/users/ef71c437-82fd-4a35-b9a7-910b2aaf6f18/managed_organizations",
+                     "billing_managed_organizations_url": "/v2/users/ef71c437-82fd-4a35-b9a7-910b2aaf6f18/billing_managed_organizations",
+                     "audited_organizations_url": "/v2/users/ef71c437-82fd-4a35-b9a7-910b2aaf6f18/audited_organizations",
+                     "managed_spaces_url": "/v2/users/ef71c437-82fd-4a35-b9a7-910b2aaf6f18/managed_spaces",
+                     "audited_spaces_url": "/v2/users/ef71c437-82fd-4a35-b9a7-910b2aaf6f18/audited_spaces"
+                  }
+               }
+            ],
+            "billing_managers_url": "/v2/organizations/a470ca19-17de-4890-be2b-6b731a03161c/billing_managers",
+            "billing_managers": [],
+            "auditors_url": "/v2/organizations/a470ca19-17de-4890-be2b-6b731a03161c/auditors",
+            "auditors": [],
+            "app_events_url": "/v2/organizations/a470ca19-17de-4890-be2b-6b731a03161c/app_events",
+            "space_quota_definitions_url": "/v2/organizations/a470ca19-17de-4890-be2b-6b731a03161c/space_quota_definitions",
+            "space_quota_definitions": []
+         }
+      }
+   ]
+}`
+
+func AddFiftyOneOrgs(server *ghttp.Server, orgName string) {
+	AddHandler(server, http.MethodGet, "/v2/organizations?order-by=name", http.StatusOK, []byte(fmt.Sprintf(fiftyOneOrgJSONPage1, orgName)))
 	AddHandler(server, http.MethodGet, "/v2/organizations?order-by=name&order-direction=asc&page=2&results-per-page=50", http.StatusOK, []byte(fiftyOneOrgJSONPage2))
 	AddHandler(server, http.MethodGet, "/v2/spaces?order-by=name&q=organization_guid%3A6f30e06d-360e-4cd7-9849-01f28109bc37", http.StatusOK, []byte(noSpaces))
+	// TODO this appears not to work because we're downcasing something, but I don't know why we would do that.
+	AddHandler(server, http.MethodGet, strings.ToLower(fmt.Sprintf("/v2/organizations?q=name%%3A%[1]s&inline-relations-depth=1", orgName)), http.StatusOK, []byte(emptyOrgWithDepthOne))
 }
 
 // /v2/organizations/6f30e06d-360e-4cd7-9849-01f28109bc37/spaces
