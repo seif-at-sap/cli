@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/gomega/gexec"
 )
 
-var _ = Describe("Config", func() {
+var _ = FDescribe("Config", func() {
 	var configDir string
 
 	BeforeEach(func() {
@@ -28,6 +28,7 @@ var _ = Describe("Config", func() {
 			session := helpers.CF("api")
 			Eventually(session.Err).Should(Say("Warning: Error read/writing config: unexpected end of JSON input for %s\n", helpers.ConvertPathToRegularExpression(filepath.Join(configDir, "config.json"))))
 			Eventually(session).Should(Exit())
+			Expect(true).To(BeFalse())
 		})
 
 		It("displays json warning for an unrefactored command", func() {

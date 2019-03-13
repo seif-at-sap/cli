@@ -127,6 +127,12 @@ jobs:
       timeout: 1h30m
       params:
         CF_INT_IGNORE_API_VERSION_CHECK: false
+      on_success:
+        put: cli-pr
+        params:
+          path: cli-pr
+          comment: Successfully passed unit and integration tests for the CF CLI
+          status: success
       on_failure:
         put: cli-pr
         params:
@@ -138,7 +144,3 @@ jobs:
         params:
           operation: unclaim
           name: bosh-lite/name
-    - put: cli-pr
-      params:
-        path: cli-pr
-        status: success

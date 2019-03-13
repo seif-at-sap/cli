@@ -31,8 +31,14 @@ var (
 
 func TestIsolated(t *testing.T) {
 	RegisterFailHandler(Fail)
+	reporters := []Reporter{}
 
-	RunSpecs(t, "Isolated Integration Suite")
+	prBuilderReporter := helpers.GetPRBuilderReporter()
+	if prBuilderReporter != nil {
+		reporters = append(reporters, prBuilderReporter)
+	}
+
+	RunSpecsWithDefaultAndCustomReporters(t, "Isolated Integration Suite", reporters)
 }
 
 var _ = SynchronizedBeforeSuite(func() []byte {
