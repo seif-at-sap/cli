@@ -2,6 +2,11 @@ package isolated
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -78,6 +83,40 @@ var _ = SynchronizedAfterSuite(func() {
 	helpers.DestroyHomeDir(homeDir)
 	GinkgoWriter.Write([]byte(fmt.Sprintf("==============================End of Global Node %d Synchronized After Each==============================", GinkgoParallelNode())))
 }, func() {
+	failureSummaries := make([]string, 0)
+	outputRoot := os.Getenv(helpers.PRBuilderOutputEnvVar)
+	err := filepath.Walk(outputRoot, func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			return nil
+		}
+		allFailures, err := ioutil.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		failures := strings.Split(string(allFailures), "\n")
+		failureSummaries = append(failureSummaries, failures...)
+		return nil
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	sort.Strings(failureSummaries)
+	outfile, err := os.Create(filepath.Join(outputRoot, "summary.txt"))
+	if err != nil {
+		panic(err)
+	}
+
+	for _, line := range failureSummaries {
+		if line != "" {
+			fmt.Fprintln(outfile, line)
+		}
+	}
+
+	if err != nil {
+		panic(err)
+	}
 })
 
 var _ = BeforeEach(func() {
