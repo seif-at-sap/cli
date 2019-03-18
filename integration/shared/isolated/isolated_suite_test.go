@@ -83,12 +83,23 @@ var _ = SynchronizedAfterSuite(func() {
 	helpers.DestroyHomeDir(homeDir)
 	GinkgoWriter.Write([]byte(fmt.Sprintf("==============================End of Global Node %d Synchronized After Each==============================", GinkgoParallelNode())))
 }, func() {
-	failureSummaries := make([]string, 0)
 	outputRoot := os.Getenv(helpers.PRBuilderOutputEnvVar)
-	err := filepath.Walk(outputRoot, func(path string, info os.FileInfo, err error) error {
+	if outputRoot != "" {
+		writeFailureSummary(outputRoot)
+	}
+})
+
+func writeFailureSummary(outputRoot string) {
+	outfile, err := os.Create(filepath.Join(outputRoot, "summary.txt"))
+	failureSummaries := make([]string, 0)
+	if err != nil {
+		panic(err)
+	}
+	err = filepath.Walk(outputRoot, func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() {
 			return nil
 		}
+
 		allFailures, err := ioutil.ReadFile(path)
 		if err != nil {
 			return err
@@ -97,27 +108,28 @@ var _ = SynchronizedAfterSuite(func() {
 		failureSummaries = append(failureSummaries, failures...)
 		return nil
 	})
-
 	if err != nil {
 		panic(err)
 	}
-
 	sort.Strings(failureSummaries)
-	outfile, err := os.Create(filepath.Join(outputRoot, "summary.txt"))
-	if err != nil {
-		panic(err)
-	}
-
+	anyFailures := false
+	_, err = outfile.WriteString("### CI Run Summary:\nThe following failures were detected in the pipeline:\n```\n")
+	var previousLine string
 	for _, line := range failureSummaries {
-		if line != "" {
+		if line != "" && line != previousLine {
+			anyFailures = true
+			previousLine = line
 			fmt.Fprintln(outfile, line)
 		}
 	}
-
+	_, err = outfile.WriteString("```")
+	if !anyFailures {
+		err = os.Remove(filepath.Join(outputRoot, "summary.txt"))
+	}
 	if err != nil {
 		panic(err)
 	}
-})
+}
 
 var _ = BeforeEach(func() {
 	GinkgoWriter.Write([]byte("==============================Global Before Each=============================="))

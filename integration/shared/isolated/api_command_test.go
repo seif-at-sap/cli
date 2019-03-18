@@ -18,7 +18,7 @@ import (
 	"github.com/onsi/gomega/ghttp"
 )
 
-var _ = FDescribe("api command", func() {
+var _ = Describe("api command", func() {
 	Context("no arguments", func() {
 		When("the api is set", func() {
 			When("the user is not logged in", func() {
@@ -62,7 +62,6 @@ var _ = FDescribe("api command", func() {
 					Eventually(session).Should(Say(`api endpoint:\s+%s`, target))
 					Eventually(session).Should(Say(`api version:\s+%s`, apiVersion))
 					Eventually(session).Should(Exit(0))
-					Expect(true).To(BeFalse())
 				})
 			})
 		})

@@ -138,6 +138,7 @@ jobs:
         params:
           path: cli-pr
           status: failure
+          comment_file: failure_summary/summary.txt
       ensure:
         put: unclaim-bosh-lite
         resource: bosh-lite
