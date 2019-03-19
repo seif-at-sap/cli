@@ -157,8 +157,16 @@ func (cmd *LoginCommand) Execute(args []string) error {
 		return errors.New("Service account currently logged in. Use 'cf logout' to log out service account and try again.")
 	}
 
-	err = cmd.authenticate()
-	if err != nil {
+	var authErr error
+	if cmd.SSO == true || cmd.SSOPasscode != "" {
+		if cmd.SSO && cmd.SSOPasscode != "" {
+			return translatableerror.ArgumentCombinationError{Args: []string{"--sso-passcode", "--sso"}}
+		}
+		authErr = cmd.authenticateSSO()
+	} else {
+		authErr = cmd.authenticate()
+	}
+	if authErr != nil {
 		return errors.New("Unable to authenticate.")
 	}
 
@@ -200,6 +208,44 @@ func (cmd *LoginCommand) authenticate() error {
 	var err error
 	for i := 0; i < maxLoginTries; i++ {
 		err = cmd.passwordPrompts(prompts, credentials, passwordKeys)
+
+		if err != nil {
+			cmd.UI.DisplayWarning(translatableerror.ConvertToTranslatableError(err).Error())
+			cmd.UI.DisplayNewline()
+		}
+
+		if err == nil {
+			cmd.UI.DisplayOK()
+			cmd.UI.DisplayNewline()
+			break
+		}
+	}
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (cmd *LoginCommand) authenticateSSO() error {
+	prompts := cmd.Actor.GetLoginPrompts()
+	credentials := make(map[string]string)
+
+	var err error
+	for i := 0; i < maxLoginTries; i++ {
+		if len(cmd.SSOPasscode) > 0 {
+			credentials["passcode"] = cmd.SSOPasscode
+			cmd.SSOPasscode = ""
+		} else {
+			credentials["passcode"], _ = cmd.UI.DisplayPasswordPrompt(prompts["passcode"].DisplayName)
+		}
+
+		credentialsCopy := make(map[string]string, len(credentials))
+		for k, v := range credentials {
+			credentialsCopy[k] = v
+		}
+
+		cmd.UI.DisplayText("Authenticating...")
+		err = cmd.Actor.Authenticate(credentialsCopy, "", constant.GrantTypePassword)
 
 		if err != nil {
 			cmd.UI.DisplayWarning(translatableerror.ConvertToTranslatableError(err).Error())

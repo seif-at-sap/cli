@@ -342,32 +342,42 @@ var _ = Describe("login command", func() {
 		})
 	})
 
-	Describe("SSO", func() {
+	FDescribe("SSO", func() {
+		BeforeEach(func() {
+			helpers.TurnOnExperimentalLogin()
+		})
+
+		AfterEach(func() {
+			helpers.TurnOffExperimentalLogin()
+		})
+
 		When("--sso-passcode is provided", func() {
 			Context("and --sso is also passed", func() {
 				It("fails with a useful error message", func() {
 					session := helpers.CF("login", "--sso-passcode", "some-passcode", "--sso")
-					Eventually(session).Should(Say("Incorrect usage: --sso-passcode flag cannot be used with --sso"))
+					Eventually(session.Err).Should(Say("Incorrect Usage: The following arguments cannot be used together: --sso-passcode, --sso"))
 					Eventually(session).Should(Exit(1))
 				})
 			})
 
 			Context("and the provided passcode is incorrect", func() {
 				It("prompts twice, displays an error and fails", func() {
-					session := helpers.CF("login", "--sso-passcode", "some-passcode")
+					input := NewBuffer()
+					input.Write([]byte("bad-passcode-again\nbad-passcode-strikes-back\n"))
+					session := helpers.CFWithStdin(input, "login", "--sso-passcode", "some-passcode")
 					Eventually(session).Should(Say("API endpoint:\\s+" + helpers.GetAPI()))
 					Eventually(session).Should(Say(`Authenticating\.\.\.`))
-					Eventually(session).Should(Say(`Credentials were rejected, please try again.`))
+					Eventually(session.Err).Should(Say(`Invalid passcode`))
 
 					// Leaving out expectation of prompt text, since it comes from UAA (and doesn't show up on Windows)
 					Eventually(session).Should(Say(`Authenticating\.\.\.`))
-					Eventually(session).Should(Say(`Credentials were rejected, please try again.`))
+					Eventually(session.Err).Should(Say(`Invalid passcode`))
 					Eventually(session).Should(Say(`Authenticating\.\.\.`))
-					Eventually(session).Should(Say(`Credentials were rejected, please try again.`))
+					Eventually(session.Err).Should(Say(`Invalid passcode`))
 					Eventually(session).Should(Say(`API endpoint:\s+` + helpers.GetAPI() + `\s+\(API version: \d\.\d{1,3}\.\d{1,3}\)`))
 					Eventually(session).Should(Say(`Not logged in. Use 'cf login' to log in.`))
-					Eventually(session).Should(Say(`FAILED`))
 					Eventually(session).Should(Say(`Unable to authenticate`))
+					Eventually(session).Should(Say(`FAILED`))
 
 					Eventually(session).Should(Exit(1))
 				})
@@ -391,15 +401,15 @@ var _ = Describe("login command", func() {
 
 			When("a different user logs in with valid sso passcode", func() {
 				// Following test is desired, but not current behavior.
-				XIt("should fail log in and display an error informing the user they need to log out", func() {
+				It("should fail log in and display an error informing the user they need to log out", func() {
 					session := helpers.CF("login", "--sso-passcode", "my-fancy-sso")
 
 					Eventually(session).Should(Say("API endpoint:\\s+" + helpers.GetAPI()))
 					Eventually(session).Should(Say(`API endpoint:\s+` + helpers.GetAPI() + `\s+\(API version: \d\.\d{1,3}\.\d{1,3}\)`))
 					// The following message is a bit strange in the output. Consider removing?
 					Eventually(session).Should(Say("Not logged in. Use 'cf login' to log in."))
+					Eventually(session.Err).Should(Say(`Service account currently logged in\. Use 'cf logout' to log out service account and try again\.`))
 					Eventually(session).Should(Say("FAILED"))
-					Eventually(session).Should(Say(`Service account currently logged in\. Use 'cf logout' to log out service account and try again\.`))
 					Eventually(session).Should(Exit(1))
 				})
 			})
