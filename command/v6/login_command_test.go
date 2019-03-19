@@ -391,14 +391,14 @@ var _ = Describe("login Command", func() {
 			})
 		})
 
-		FDescribe("SSO Passcode", func() {
+		Describe("SSO Passcode", func() {
 			BeforeEach(func() {
 				fakeConfig.TargetReturns("whatever.com")
 
 				input.Write([]byte("some-passcode\n"))
 				fakeActor.GetLoginPromptsReturns(map[string]coreconfig.AuthPrompt{
 					"passcode": {
-						DisplayName: "WHAT IS THE SSO",
+						DisplayName: "some-sso-prompt",
 						Type:        coreconfig.AuthPromptTypePassword,
 					},
 				})
@@ -414,7 +414,7 @@ var _ = Describe("login Command", func() {
 				It("prompts the user for SSO passcode", func() {
 					Expect(executeErr).NotTo(HaveOccurred())
 					Expect(fakeActor.GetLoginPromptsCallCount()).To(Equal(1))
-					Expect(testUI.Out).To(Say("WHAT IS THE SSO:"))
+					Expect(testUI.Out).To(Say("some-sso-prompt:"))
 				})
 
 				It("authenticates with the inputted code", func() {
@@ -426,6 +426,26 @@ var _ = Describe("login Command", func() {
 					credentials, _, _ := fakeActor.AuthenticateArgsForCall(0)
 					Expect(credentials["passcode"]).To(Equal("some-passcode"))
 				})
+
+				When("an error occurs prompting for the code", func() {
+					var erroringUI *commandfakes.FakeUI
+					BeforeEach(func() {
+						erroringUI = new(commandfakes.FakeUI)
+						erroringUI.DisplayPasswordPromptReturns("", errors.New("some-error"))
+						cmd = LoginCommand{
+							UI:           erroringUI,
+							Actor:        fakeActor,
+							ActorMaker:   fakeActorMaker,
+							Config:       fakeConfig,
+							CheckerMaker: fakeCheckerMaker,
+							SSO:          true,
+						}
+					})
+					It("errors", func() {
+						Expect(erroringUI.DisplayPasswordPromptCallCount()).To(Equal(1))
+						Expect(executeErr).To(MatchError("Unable to authenticate."))
+					})
+				})
 			})
 
 			When("the --sso-passcode flag is set", func() {
@@ -435,7 +455,7 @@ var _ = Describe("login Command", func() {
 
 				It("does not prompt the user for SSO passcode", func() {
 					Expect(executeErr).NotTo(HaveOccurred())
-					Expect(testUI.Out).ToNot(Say("WHAT IS THE SSO:"))
+					Expect(testUI.Out).ToNot(Say("some-sso-prompt:"))
 				})
 
 				It("uses the flag value to authenticate", func() {
@@ -459,13 +479,14 @@ var _ = Describe("login Command", func() {
 						cmd.SSOPasscode = "some-garbage"
 						fakeActor.AuthenticateReturns(errors.New("Credentials were rejected, please try again."))
 						fakeConfig.CurrentUserNameReturns("", nil)
+						input.Write([]byte("some-passcode\n"))
 					})
 
 					It("re-prompts two more times", func() {
-						Expect(testUI.Out).To(Say("WHAT IS THE SSO:"))
+						Expect(testUI.Out).To(Say("some-sso-prompt:"))
 						Expect(testUI.Out).To(Say(`Authenticating\.\.\.`))
 						Expect(testUI.Err).To(Say("Credentials were rejected, please try again."))
-						Expect(testUI.Out).To(Say("WHAT IS THE SSO:"))
+						Expect(testUI.Out).To(Say("some-sso-prompt:"))
 						Expect(testUI.Out).To(Say(`Authenticating\.\.\.`))
 						Expect(testUI.Err).To(Say("Credentials were rejected, please try again."))
 					})

@@ -351,6 +351,13 @@ var _ = Describe("login command", func() {
 			helpers.TurnOffExperimentalLogin()
 		})
 
+		FWhen("--sso is provided", func() {
+			It("Presents the default UAA prompt", func() {
+				session := helpers.CF("login", "--sso")
+				Eventually(session).Should(Say(`Temporary Authentication Code \( Get one at https:\/\/login\..*passcode \)`))
+			})
+		})
+
 		When("--sso-passcode is provided", func() {
 			Context("and --sso is also passed", func() {
 				It("fails with a useful error message", func() {
@@ -376,7 +383,7 @@ var _ = Describe("login command", func() {
 					Eventually(session.Err).Should(Say(`Invalid passcode`))
 					Eventually(session).Should(Say(`API endpoint:\s+` + helpers.GetAPI() + `\s+\(API version: \d\.\d{1,3}\.\d{1,3}\)`))
 					Eventually(session).Should(Say(`Not logged in. Use 'cf login' to log in.`))
-					Eventually(session).Should(Say(`Unable to authenticate`))
+					Eventually(session.Err).Should(Say(`Unable to authenticate`))
 					Eventually(session).Should(Say(`FAILED`))
 
 					Eventually(session).Should(Exit(1))
@@ -411,6 +418,10 @@ var _ = Describe("login command", func() {
 					Eventually(session.Err).Should(Say(`Service account currently logged in\. Use 'cf logout' to log out service account and try again\.`))
 					Eventually(session).Should(Say("FAILED"))
 					Eventually(session).Should(Exit(1))
+
+					//And I am still logged in
+					targetSession := helpers.CF("target")
+					Eventually(targetSession).Should(Exit(0))
 				})
 			})
 		})

@@ -236,7 +236,10 @@ func (cmd *LoginCommand) authenticateSSO() error {
 			credentials["passcode"] = cmd.SSOPasscode
 			cmd.SSOPasscode = ""
 		} else {
-			credentials["passcode"], _ = cmd.UI.DisplayPasswordPrompt(prompts["passcode"].DisplayName)
+			credentials["passcode"], err = cmd.UI.DisplayPasswordPrompt(prompts["passcode"].DisplayName)
+			if err != nil {
+				return err
+			}
 		}
 
 		credentialsCopy := make(map[string]string, len(credentials))
